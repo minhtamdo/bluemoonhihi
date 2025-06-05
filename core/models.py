@@ -15,7 +15,7 @@ STATUS_ACCOUNT = [
 USER_ROLE = [
     ('chu_ho', 'Head of Household'),
     ('thu_ky', 'Accountant'),
-    ('to_trương', 'Group Leader'),
+    ('to_truong', 'Group Leader'),
     ('to_pho', 'Vice Group Leader')
 ]
 
@@ -60,9 +60,9 @@ NOTIFICATION_TYPE = [
     ('system_announcement', 'System Announcement'),
 ]
 
-REQUEST_TYPE_ENUM = [
-    ('temporary_absence', 'Temporary Absense'),
-    ('temporary_residence', 'Temporary Residence'),
+REQUEST_TYPE_CHOICES = [
+    ('temporary_absence', 'Tạm vắng'),
+    ('temporary_residence', 'Tạm trú'),
 ]
 
 # --- MODELS ---
@@ -88,7 +88,7 @@ class Household(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False, db_column='household_id')
     household_number = models.TextField()
     head = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='households', db_column='head_id')
-    household_size = models.IntegerField()
+    household_size = models.IntegerField(default=1)
     address = models.TextField()
     created_at = models.DateTimeField()
     updated_at = models.DateTimeField()
@@ -134,8 +134,8 @@ class Fee(models.Model):
     type = models.CharField(max_length=20, choices=FEE_TYPE)
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     due_date = models.DateField()
-    is_common = models.BooleanField(default=True, db_column='is_common')  # NEW FIELD
-    households = models.ManyToManyField('Household', blank=True, related_name='private_fees', db_table='fee_households')  # NEW FIELD
+    is_common = models.BooleanField(default=True, db_column='is_common')
+    households = models.ManyToManyField('Household', blank=True, related_name='private_fees', db_table='fee_households')
     created_by = models.ForeignKey(User, null=True, on_delete=models.SET_NULL, related_name='fees', db_column='created_by')
     created_at = models.DateTimeField()
 
@@ -176,7 +176,7 @@ class HouseholdChange(models.Model):
 class ResidencyRequest(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False, db_column='request_id')
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='residency_requests', db_column='user_id')
-    request_type = models.CharField(max_length=30)
+    request_type = models.CharField(max_length=30, choices=REQUEST_TYPE_CHOICES)
     from_date = models.DateField()
     to_date = models.DateField(blank=True, null=True)
     destination = models.TextField()
@@ -188,3 +188,29 @@ class ResidencyRequest(models.Model):
 
     class Meta:
         db_table = 'residency_requests'
+
+class Activity(models.Model):
+    ACTION_CHOICES = [
+        ('create_household', 'Đăng ký hộ khẩu mới'),
+        ('update_household', 'Cập nhật hộ khẩu'),
+        ('delete_household', 'Xóa hộ khẩu'),
+        ('create_member', 'Đăng ký nhân khẩu mới'),
+        ('update_member', 'Cập nhật nhân khẩu'),
+        ('delete_member', 'Xóa nhân khẩu'),
+        ('approve_request', 'Duyệt yêu cầu'),
+        ('reject_request', 'Từ chối yêu cầu'),
+    ]
+
+    action = models.CharField(max_length=50, choices=ACTION_CHOICES)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    detail = models.TextField()  # Nội dung như: "Đăng ký hộ khẩu mới - Căn A123"
+    status = models.CharField(max_length=20, choices=[
+        ('pending', 'Chờ duyệt'),
+        ('success', 'Đã duyệt'),
+        ('error', 'Từ chối')
+    ], default='success')
+
+    
+
+
+

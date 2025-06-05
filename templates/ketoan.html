@@ -740,7 +740,7 @@
         <tbody id="paymentsTable">
             {% for payment in payments %}
             <tr>
-                <td>{{ payment.paid_at_vn|date:"d/m/Y H:i" }}</td>
+                <td>{{ payment.paid_at|date:"d/m/Y H:i" }}</td>
                 <td>{{ payment.household.household_number }}</td>
                 <td>{{ payment.fee.title }}</td>
                 <td>{{ payment.fee.amount|floatformat:0 }}</td>
@@ -818,7 +818,7 @@
 
                 <div style="margin-top: 30px; background: #f8f9fa; padding: 25px; border-radius: 10px;">
                     <h4 style="margin-bottom: 20px; color: #333;">📈 Biểu đồ thống kê tháng này</h4>
-                    <div style="height: 300px; width: 100%; background: white; border-radius: 10px; padding: 20px;">
+                    <div style="height: 100%; width: 100%; background: white; border-radius: 10px; padding: 20px;">
     <canvas id="revenuePieChart" style="width: 100%; height: 100%;"></canvas>
 </div>
             </div>
@@ -1000,6 +1000,93 @@
 
     <script>
         // Global data storage
+        let residents = [
+            {
+                id: 1,
+                apartmentNumber: "A101",
+                ownerName: "Nguyễn Văn An",
+                phone: "0901234567",
+                area: 75.5,
+                email: "an.nguyen@email.com",
+                status: "active"
+            },
+            {
+                id: 2,
+                apartmentNumber: "A102",
+                ownerName: "Trần Thị Bình",
+                phone: "0912345678",
+                area: 82.0,
+                email: "binh.tran@email.com",
+                status: "active"
+            },
+            {
+                id: 3,
+                apartmentNumber: "B203",
+                ownerName: "Lê Văn Cường",
+                phone: "0923456789",
+                area: 95.5,
+                email: "cuong.le@email.com",
+                status: "inactive"
+            }
+        ];
+
+        let fees = [
+            {
+                id: 1,
+                name: "Phí quản lý",
+                amount: 15000,
+                unit: "per_m2",
+                description: "Phí quản lý chung cư hàng tháng",
+                status: "active"
+            },
+            {
+                id: 2,
+                name: "Phí gửi xe máy",
+                amount: 150000,
+                unit: "per_month",
+                description: "Phí gửi xe máy trong tầng hầm",
+                status: "active"
+            },
+            {
+                id: 3,
+                name: "Phí nước",
+                amount: 25000,
+                unit: "per_m2",
+                description: "Phí nước sinh hoạt",
+                status: "active"
+            }
+        ];
+
+        let payments = [
+            {
+                id: 1,
+                date: "2024-01-15",
+                apartmentId: 1,
+                feeId: 1,
+                amount: 1132500,
+                status: "paid",
+                note: "Thanh toán đầy đủ"
+            },
+            {
+                id: 2,
+                date: "2024-01-10",
+                apartmentId: 2,
+                feeId: 1,
+                amount: 1230000,
+                status: "paid",
+                note: ""
+            },
+            {
+                id: 3,
+                date: "2024-01-05",
+                apartmentId: 3,
+                feeId: 2,
+                amount: 150000,
+                status: "overdue",
+                note: "Quá hạn 15 ngày"
+            }
+        ];
+
         let editingId = null;
         let editingType = null;
 
