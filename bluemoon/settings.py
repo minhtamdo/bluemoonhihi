@@ -11,7 +11,6 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 
 from pathlib import Path
-from decouple import config
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -80,11 +79,11 @@ WSGI_APPLICATION = 'bluemoon.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': config('DB_NAME'),
-        'USER': config('DB_USER'),
-        'PASSWORD': config('DB_PASSWORD'),
-        'HOST': config('DB_HOST'),
-        'PORT': config('DB_PORT'),
+        'NAME': 'Complex',
+        'USER': 'postgres',
+        'PASSWORD': '_Iris.23_',
+        'HOST': 'localhost',
+        'PORT': '5432',  # cổng mặc định PostgreSQL
     }
 }
 
@@ -130,9 +129,3 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-STRIPE_PUBLIC_KEY = config('STRIPE_PUBLIC_KEY')
-STRIPE_SECRET_KEY = config('STRIPE_SECRET_KEY') 
-STRIPE_WEBHOOK_SECRET = config('STRIPE_WEBHOOK_SECRET')
-DEBUG = config('DEBUG', default=False, cast=bool)
-DB_PASSWORD = config('DB_PASSWORD')

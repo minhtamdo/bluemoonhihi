@@ -3,9 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="csrf-token" content="{{ csrf_token }}">
     <title>Cổng thông tin cư dân</title>
-    <script src="https://js.stripe.com/v3/"></script>
     <style>
         * {
             margin: 0;
@@ -111,18 +109,6 @@
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        .payment-method.active {
-            border: 2px solid #28a745;
-            background-color: #e6ffe6;
-            cursor: pointer;
-            }
-        .payment-method {
-            cursor: pointer;
-            padding: 10px;
-            border: 1px solid #ccc;
-            margin-bottom: 5px;
-            border-radius: 4px;
-            }
 
         .card {
             background: white;
@@ -135,7 +121,7 @@
         }
 
         .card:hover {
-            transform: translateY(-2px);
+            transform: translateY(-5px);
             box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15);
         }
 
@@ -426,177 +412,226 @@
             <button class="nav-tab" onclick="showSection('history')">📋 Lịch sử</button>
         </div>
 
-        <div class="tab-content">
-
-<div id="fees" class="content-section active">
-        <div class="fee-grid">
-            <div class="card">
-                <h3>💰 Phí dịch vụ tháng này</h3>
-                {% for fee in fee_status_list %}
+        <!-- Theo dõi phí -->
+        <div id="fees" class="content-section active">
+            <div class="fee-grid">
+                <div class="card">
+                    <h3>💰 Phí dịch vụ tháng này</h3>
+                    {% for fee in fee_status_list %}
+                        <div class="fee-item">
+                            <span class="fee-name">{{ fee.title }}</span>
+                            <span class="fee-amount">{{ fee.amount }}</span>
+                            <span class="fee-status {% if fee.status == 'paid' %}status-paid{% else %}status-unpaid{% endif %}">
+                                {% if fee.status == 'paid' %}Đã thanh toán{% else %}Chưa thanh toán{% endif %}
+                            </span>
+                        </div>
+                    {% endfor %}
+                </div>
+                <div class="card">
+                    <h3>📈 Tổng quan</h3>
                     <div class="fee-item">
-                        <span class="fee-name">{{ fee.title }}</span>
-                        <span class="fee-amount">{{ fee.amount }}</span>
-                        <span class="fee-status {% if fee.status == 'paid' %}status-paid{% else %}status-unpaid{% endif %}">
-                            {% if fee.status == 'paid' %}Đã thanh toán{% else %}Chưa thanh toán{% endif %}
-                        </span>
+                        <span class="fee-name">Tổng phí tháng này</span>
+                        <span class="fee-amount">1,150,000 VNĐ</span>
                     </div>
-                {% endfor %}
-
+                    <div class="fee-item">
+                        <span class="fee-name">Đã thanh toán</span>
+                        <span class="fee-amount" style="color: #27ae60;">150,000 VNĐ</span>
+                    </div>
+                    <div class="fee-item">
+                        <span class="fee-name">Còn phải trả</span>
+                        <span class="fee-amount">1,000,000 VNĐ</span>
+                    </div>
+                    <div class="fee-item">
+                        <span class="fee-name">Hạn thanh toán</span>
+                        <span class="fee-amount" style="color: #f39c12;">15/06/2025</span>
+                    </div>
+                </div>
             </div>
+        </div>
+
+        <!-- Đóng phí -->
+        <div id="payment" class="content-section">
             <div class="card">
-                <h3>📈 Tổng quan</h3>
-                <div class="fee-item">
-                    <span class="fee-name">Tổng phí tháng này</span>
-                    <span class="fee-amount">${{ total_fee|floatformat:0 }}</span>
+                <h3>💳 Thanh toán phí</h3>
+                <div class="success-message" id="paymentSuccess"></div>
+                <div class="error-message" id="paymentError"></div>
+                
+                <div class="form-group">
+                    <label>Chọn khoản phí cần thanh toán:</label>
+                    <select class="form-control" id="feeSelect">
+                        <option value="">-- Chọn khoản phí --</option>
+                        <option value="management">Phí quản lý - 500,000 VNĐ</option>
+                        <option value="cleaning">Phí vệ sinh - 200,000 VNĐ</option>
+                        <option value="parking">Phí gửi xe - 300,000 VNĐ</option>
+                        <option value="all">Thanh toán tất cả - 1,000,000 VNĐ</option>
+                    </select>
                 </div>
-                <div class="fee-item">
-                    <span class="fee-name">Đã thanh toán</span>
-                    <span class="fee-amount" style="color: #27ae60;">${{ paid_total|floatformat:0 }}</span>
+
+                <div class="form-group">
+                    <label>Phương thức thanh toán:</label>
+                    <div class="payment-methods">
+                        <div class="payment-method" onclick="selectPaymentMethod('bank')">
+                            <h4>🏦 Chuyển khoản ngân hàng</h4>
+                            <p>Techcombank - 1234567890</p>
+                        </div>
+                        <div class="payment-method" onclick="selectPaymentMethod('momo')">
+                            <h4>📱 MoMo</h4>
+                            <p>Quét mã QR để thanh toán</p>
+                        </div>
+                        <div class="payment-method" onclick="selectPaymentMethod('zalo')">
+                            <h4>💰 ZaloPay</h4>
+                            <p>Thanh toán qua ZaloPay</p>
+                        </div>
+                    </div>
                 </div>
-                <div class="fee-item">
-                    <span class="fee-name">Còn phải trả</span>
-                    <span class="fee-amount">${{ unpaid_total|floatformat:0 }}</span>
+
+                <button class="btn btn-success" onclick="processPayment()">
+                    💳 Thanh toán ngay
+                </button>
+            </div>
+        </div>
+
+        <!-- Gửi yêu cầu -->
+        <div id="requests" class="content-section">
+            <div class="card">
+                <h3>📝 Gửi yêu cầu mới</h3>
+                <div class="success-message" id="requestSuccess"></div>
+                
+                <div class="form-group">
+                    <label for="requestType">Loại yêu cầu:</label>
+                    <select class="form-control" id="requestType" onchange="showRequestForm()">
+                        <option value="">-- Chọn loại yêu cầu --</option>
+                        <option value="add_resident">Thêm nhân khẩu</option>
+                        <option value="remove_resident">Giảm nhân khẩu</option>
+                        <option value="change_status">Thay đổi trạng thái cư trú</option>
+                        <option value="other">Yêu cầu khác</option>
+                    </select>
                 </div>
-                <div class="fee-item">
-                    <span class="fee-name">Hạn thanh toán phí gần nhất</span>
-                    <span class="fee-amount" style="color: #f39c12;">{{ due_date|date:"d/m/Y" }}</span>
+
+                <div id="requestForm" style="display: none;">
+                    <div class="form-group">
+                        <label for="requestDetails">Chi tiết yêu cầu:</label>
+                        <textarea class="form-control" id="requestDetails" rows="4" placeholder="Mô tả chi tiết yêu cầu của bạn..."></textarea>
+                    </div>
+
+                    <div id="addResidentForm" style="display: none;">
+                        <div class="form-group">
+                            <label for="newResidentName">Họ và tên:</label>
+                            <input type="text" class="form-control" id="newResidentName" placeholder="Nhập họ và tên">
+                        </div>
+                        <div class="form-group">
+                            <label for="newResidentId">CCCD/CMND:</label>
+                            <input type="text" class="form-control" id="newResidentId" placeholder="Nhập số CCCD/CMND">
+                        </div>
+                        <div class="form-group">
+                            <label for="relationship">Mối quan hệ:</label>
+                            <select class="form-control" id="relationship">
+                                <option value="">-- Chọn mối quan hệ --</option>
+                                <option value="spouse">Vợ/Chồng</option>
+                                <option value="child">Con</option>
+                                <option value="parent">Cha/Mẹ</option>
+                                <option value="relative">Họ hàng</option>
+                                <option value="other">Khác</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="removeResidentForm" style="display: none;">
+                        <div class="form-group">
+                            <label for="removeResidentName">Chọn người cần giảm:</label>
+                            <select class="form-control" id="removeResidentName">
+                                <option value="">-- Chọn người --</option>
+                                <option value="nguyen_van_b">Nguyễn Văn B</option>
+                                <option value="nguyen_thi_c">Nguyễn Thị C</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="removeReason">Lý do:</label>
+                            <select class="form-control" id="removeReason">
+                                <option value="">-- Chọn lý do --</option>
+                                <option value="moved_out">Chuyển đi nơi khác</option>
+                                <option value="marriage">Kết hôn</option>
+                                <option value="work">Đi làm xa</option>
+                                <option value="other">Lý do khác</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="statusChangeForm" style="display: none;">
+                        <div class="form-group">
+                            <label for="currentStatus">Trạng thái hiện tại:</label>
+                            <select class="form-control" id="currentStatus">
+                                <option value="permanent">Thường trú</option>
+                                <option value="temporary">Tạm trú</option>
+                                <option value="owner">Chủ hộ</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="newStatus">Trạng thái mới:</label>
+                            <select class="form-control" id="newStatus">
+                                <option value="">-- Chọn trạng thái mới --</option>
+                                <option value="permanent">Thường trú</option>
+                                <option value="temporary">Tạm trú</option>
+                                <option value="owner">Chủ hộ</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="attachments">Đính kèm tài liệu (nếu có):</label>
+                        <input type="file" class="form-control" id="attachments" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
+                        <small style="color: #666;">Chấp nhận: PDF, JPG, PNG, DOC, DOCX. Tối đa 5MB mỗi file.</small>
+                    </div>
+
+                    <button class="btn btn-primary" onclick="submitRequest()">
+                        📤 Gửi yêu cầu
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lịch sử -->
+        <div id="history" class="content-section">
+            <div class="card">
+                <h3>📋 Lịch sử yêu cầu</h3>
+                <div class="request-history">
+                    <div class="request-item">
+                        <div class="request-date">20/05/2025 - 14:30</div>
+                        <div class="request-type">Thêm nhân khẩu - Nguyễn Văn B</div>
+                        <div>Trạng thái: <span style="color: #27ae60; font-weight: 500;">✅ Đã duyệt</span></div>
+                    </div>
+                    <div class="request-item">
+                        <div class="request-date">15/05/2025 - 09:15</div>
+                        <div class="request-type">Thay đổi trạng thái cư trú</div>
+                        <div>Trạng thái: <span style="color: #f39c12; font-weight: 500;">⏳ Đang xử lý</span></div>
+                    </div>
+                    <div class="request-item">
+                        <div class="request-date">10/05/2025 - 16:45</div>
+                        <div class="request-type">Giảm nhân khẩu - Nguyễn Thị C</div>
+                        <div>Trạng thái: <span style="color: #e74c3c; font-weight: 500;">❌ Bị từ chối</span></div>
+                        <div style="margin-top: 5px; font-size: 0.9rem; color: #666;">Lý do: Thiếu giấy tờ chứng minh</div>
+                    </div>
                 </div>
             </div>
 
-        </div>
-</div>
-
-<div id="payment" class="content-section">
-    <div class="card">
-        <h3>💳 Thanh toán phí</h3>
-        <div class="success-message" id="paymentSuccess"></div>
-        <div class="error-message" id="paymentError"></div>        
-        <div class="form-group">
-            <label>Chọn khoản phí cần thanh toán:</label>
-            <select id="feeSelect">
-                <option value="">-- Chọn khoản phí --</option>
-                {% for fee in fee_status_list %}
-                    {% if fee.status == 'unpaid' %}
-                        <option value="{{ fee.payment_id }}">{{ fee.title }} - ${{ fee.amount|floatformat:0 }}</option>
-                    {% endif %}
-                {% endfor %}
-            </select>
-            <div class="payment-methods">
-            <div class="payment-method" onclick="selectPaymentMethod('card')">🏦 Thanh toán thẻ</div>
-            <div class="payment-method" onclick="selectPaymentMethod('qr')">📱 Thanh toán QR (chưa hỗ trợ)</div>
+            <div class="card">
+                <h3>💳 Lịch sử thanh toán</h3>
+                <div class="request-history">
+                    <div class="request-item">
+                        <div class="request-date">18/05/2025 - 10:20</div>
+                        <div class="request-type">Thanh toán phí bảo vệ tháng 5</div>
+                        <div>Số tiền: <span style="color: #27ae60; font-weight: 500;">150,000 VNĐ</span></div>
+                        <div>Phương thức: Chuyển khoản ngân hàng</div>
+                    </div>
+                    <div class="request-item">
+                        <div class="request-date">15/04/2025 - 14:30</div>
+                        <div class="request-type">Thanh toán phí quản lý tháng 4</div>
+                        <div>Số tiền: <span style="color: #27ae60; font-weight: 500;">500,000 VNĐ</span></div>
+                        <div>Phương thức: MoMo</div>
+                    </div>
+                </div>
             </div>
-            <button onclick="processPayment()">Thanh toán ngay</button>
         </div>
-    </div>
-</div>
-
-<div id="requests" class="content-section">
-  <div class="card">
-    <h3>📝 Gửi yêu cầu</h3>
-    <div class="error-message" id="requestError" style="display:none;"></div>
-    <div class="success-message" id="requestSuccess" style="display:none;"></div>
-
-    <div class="form-group">
-      <label for="requestType">Loại yêu cầu:</label>
-      <select class="form-control" id="requestType" onchange="showRequestForm()">
-        <option value="">-- Chọn loại yêu cầu --</option>
-        <option value="temporary_residence">Đăng ký tạm trú</option>
-        <option value="temporary_absence">Khai báo tạm vắng</option>
-      </select>
-    </div>
-
-    <div id="requestForm" style="display: none;">
-      <div class="form-group">
-        <label for="requestDetails">Mô tả yêu cầu:</label>
-        <textarea class="form-control" id="requestDetails" rows="4" placeholder="Mô tả chi tiết yêu cầu..."></textarea>
-      </div>
-
-      <div id="residencyRequestForm" style="display: none;">
-        <div class="form-group">
-          <label for="fromDate">Từ ngày:</label>
-          <input type="date" class="form-control" id="fromDate">
-        </div>
-        <div class="form-group">
-          <label for="toDate">Đến ngày (nếu có):</label>
-          <input type="date" class="form-control" id="toDate">
-        </div>
-        <div class="form-group">
-          <label for="origin">Nơi đi:</label>
-          <input type="text" class="form-control" id="origin">
-        </div>
-        <div class="form-group">
-          <label for="destination">Nơi đến:</label>
-          <input type="text" class="form-control" id="destination">
-        </div>
-        <div class="form-group">
-          <label for="reason">Lý do:</label>
-          <textarea class="form-control" id="reason" rows="3"></textarea>
-        </div>
-      </div>
-
-      <button class="btn btn-primary" onclick="submitRequest()">📤 Gửi yêu cầu</button>
-    </div>
-  </div>
-</div>
-
-
-  <div id="history" class="content-section">
-  <div class="card">
-    <h3>📋 Lịch sử yêu cầu</h3>
-    <div class="request-history">
-      {% for req in request_history %}
-      <div class="request-item">
-        <div class="request-date">{{ req.created_at|date:"d/m/Y - H:i" }}</div>
-        <div class="request-type">
-            {% if req.request_type == "temporary_residence" %}
-                Tạm trú
-            {% elif req.request_type == "temporary_absence" %}
-                Tạm vắng
-            {% else %}
-                {{ req.request_type }}
-            {% endif %}
-        </div>
-        <div>
-          Trạng thái:
-          {% if req.status == "approved" %}
-            <span style="color: #27ae60; font-weight: 500;">✅ Đã duyệt</span>
-          {% elif req.status == "pending" %}
-            <span style="color: #f39c12; font-weight: 500;">⏳ Đang xử lý</span>
-          {% elif req.status == "rejected" %}
-            <span style="color: #e74c3c; font-weight: 500;">❌ Bị từ chối</span>
-            <div style="margin-top: 5px; font-size: 0.9rem; color: #666;">
-              Lý do: {{ req.reason }}
-            </div>
-          {% endif %}
-        </div>
-      </div>
-      {% empty %}
-        <p>Chưa có yêu cầu nào.</p>
-      {% endfor %}
-    </div>
-  </div>
-
-  <div class="card">
-    <h3>💳 Lịch sử thanh toán</h3>
-    <div class="request-history">
-      {% for payment in payment_history %}
-      <div class="request-item">
-        <div class="request-date">{{ payment.paid_at|date:"d/m/Y - H:i" }}</div>
-        <div class="request-type">{{ payment.fee.title }}</div>
-        <div>
-          Số tiền: <span style="color: #27ae60; font-weight: 500;">${{ payment.fee.amount }}</span>
-        </div>
-        <div>Phương thức: {{ payment.method }}</div>
-      </div>
-      {% empty %}
-        <p>Chưa có thanh toán nào.</p>
-      {% endfor %}
-    </div>
-  </div>
-</div>
-
-</div>
-        
     </div>
 
     <!-- Modal xác nhận thanh toán -->
@@ -613,186 +648,191 @@
     </div>
 
     <script>
-        
+        let selectedPaymentMethod = '';
         let requestData = {};
 
         function showSection(sectionId) {
-    // Ẩn tất cả section
-    document.querySelectorAll('.content-section').forEach(el => el.classList.remove('active'));
+            // Ẩn tất cả các section
+            const sections = document.querySelectorAll('.content-section');
+            sections.forEach(section => section.classList.remove('active'));
 
-    // Hiện section được chọn
-    const section = document.getElementById(sectionId);
-    if (section) section.classList.add('active');
+            // Hiển thị section được chọn
+            document.getElementById(sectionId).classList.add('active');
 
-    // Cập nhật tab
-    document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
-    const tabId = `${sectionId}-tab`;
-    const tab = document.getElementById(tabId);
-    if (tab) tab.classList.add('active');
-}
+            // Cập nhật trạng thái tab
+            const tabs = document.querySelectorAll('.nav-tab');
+            tabs.forEach(tab => tab.classList.remove('active'));
+            event.target.classList.add('active');
+        }
 
-        
-let selectedMethod = null;
+        function selectPaymentMethod(method) {
+            // Bỏ lựa chọn trước đó
+            const methods = document.querySelectorAll('.payment-method');
+            methods.forEach(m => m.classList.remove('selected'));
 
-function selectPaymentMethod(method) {
-    selectedMethod = method;
+            // Chọn phương thức mới
+            event.target.closest('.payment-method').classList.add('selected');
+            selectedPaymentMethod = method;
+        }
 
-    document.querySelectorAll('.payment-method').forEach(el => {
-        el.classList.remove('active');
-    });
+        function processPayment() {
+            const feeSelect = document.getElementById('feeSelect').value;
+            
+            if (!feeSelect) {
+                showMessage('paymentError', 'Vui lòng chọn khoản phí cần thanh toán!');
+                return;
+            }
 
-    const el = document.querySelector(`.payment-method[onclick="selectPaymentMethod('${method}')"]`);
-    if (el) el.classList.add('active');
-}
+            if (!selectedPaymentMethod) {
+                showMessage('paymentError', 'Vui lòng chọn phương thức thanh toán!');
+                return;
+            }
 
-async function processPayment() {
-    const paymentId = document.getElementById('feeSelect').value;
-    if (!paymentId) {
-        alert('Vui lòng chọn khoản phí cần thanh toán!');
-        return;
-    }
+            // Hiển thị modal xác nhận
+            const details = getPaymentDetails(feeSelect);
+            document.getElementById('paymentDetails').innerHTML = `
+                <p><strong>Khoản phí:</strong> ${details.name}</p>
+                <p><strong>Số tiền:</strong> ${details.amount}</p>
+                <p><strong>Phương thức:</strong> ${getPaymentMethodName(selectedPaymentMethod)}</p>
+            `;
+            document.getElementById('paymentModal').style.display = 'block';
+        }
 
-    if (selectedMethod === 'card') {
-        try {
-            const response = await fetch('/create-checkout-session/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCookie('csrftoken'),
-                },
-                body: JSON.stringify({ payment_id: paymentId })
-            });
-            const data = await response.json();
-            if (data.url) {
-                window.location.href = data.url;
+        function confirmPayment() {
+            // Giả lập quá trình thanh toán
+            setTimeout(() => {
+                closeModal('paymentModal');
+                showMessage('paymentSuccess', 'Thanh toán thành công! Phí đã được cập nhật.');
+                
+                // Reset form
+                document.getElementById('feeSelect').value = '';
+                selectedPaymentMethod = '';
+                const methods = document.querySelectorAll('.payment-method');
+                methods.forEach(m => m.classList.remove('selected'));
+            }, 1000);
+        }
+
+        function getPaymentDetails(feeType) {
+            const details = {
+                'management': { name: 'Phí quản lý', amount: '500,000 VNĐ' },
+                'cleaning': { name: 'Phí vệ sinh', amount: '200,000 VNĐ' },
+                'parking': { name: 'Phí gửi xe', amount: '300,000 VNĐ' },
+                'all': { name: 'Tất cả các khoản phí', amount: '1,000,000 VNĐ' }
+            };
+            return details[feeType] || { name: '', amount: '0 VNĐ' };
+        }
+
+        function getPaymentMethodName(method) {
+            const names = {
+                'bank': 'Chuyển khoản ngân hàng',
+                'momo': 'MoMo',
+                'zalo': 'ZaloPay'
+            };
+            return names[method] || '';
+        }
+
+        function showRequestForm() {
+            const requestType = document.getElementById('requestType').value;
+            const form = document.getElementById('requestForm');
+            
+            // Ẩn tất cả form con
+            document.getElementById('addResidentForm').style.display = 'none';
+            document.getElementById('removeResidentForm').style.display = 'none';
+            document.getElementById('statusChangeForm').style.display = 'none';
+
+            if (requestType) {
+                form.style.display = 'block';
+                
+                // Hiển thị form tương ứng
+                if (requestType === 'add_resident') {
+                    document.getElementById('addResidentForm').style.display = 'block';
+                } else if (requestType === 'remove_resident') {
+                    document.getElementById('removeResidentForm').style.display = 'block';
+                } else if (requestType === 'change_status') {
+                    document.getElementById('statusChangeForm').style.display = 'block';
+                }
             } else {
-                alert('Lỗi khi tạo phiên thanh toán.');
-            }
-        } catch (error) {
-            alert('Lỗi khi tạo phiên thanh toán.');
-        }
-    } else if (selectedMethod === 'qr') {
-        alert('Chức năng QR chưa được hỗ trợ.');
-    } else {
-        alert('Vui lòng chọn phương thức thanh toán!');
-    }
-}
-
-function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let c of cookies) {
-            const cookie = c.trim();
-            if (cookie.startsWith(name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
+                form.style.display = 'none';
             }
         }
-    }
-    return cookieValue;
-}
 
-function showRequestForm() {
-    const type = document.getElementById("requestType").value;
-    const requestForm = document.getElementById("requestForm");
-    const residencyRequestForm = document.getElementById("residencyRequestForm");
+        function submitRequest() {
+            const requestType = document.getElementById('requestType').value;
+            const requestDetails = document.getElementById('requestDetails').value;
 
-    if (type) {
-      requestForm.style.display = "block";
-      residencyRequestForm.style.display = (type === "temporary_residence" || type === "temporary_absence") ? "block" : "none";
-    } else {
-      requestForm.style.display = "none";
-    }
-  }
+            if (!requestType) {
+                showMessage('requestError', 'Vui lòng chọn loại yêu cầu!');
+                return;
+            }
 
-  async function submitRequest() {
-    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-    const requestType = document.getElementById("requestType").value;
-    const details = document.getElementById("requestDetails").value;
-    const fromDate = document.getElementById("fromDate").value;
-    const toDate = document.getElementById("toDate").value;
-    const origin = document.getElementById("origin").value;
-    const destination = document.getElementById("destination").value;
-    const reason = document.getElementById("reason").value;
+            if (!requestDetails.trim()) {
+                showMessage('requestError', 'Vui lòng nhập chi tiết yêu cầu!');
+                return;
+            }
 
-    const payload = {
-      request_type: requestType,
-      from_date: fromDate,
-      to_date: toDate || null,
-      origin: origin,
-      destination: destination,
-      reason: reason,
-    };
+            // Validate các trường bắt buộc theo loại yêu cầu
+            if (requestType === 'add_resident') {
+                const name = document.getElementById('newResidentName').value;
+                const id = document.getElementById('newResidentId').value;
+                const relationship = document.getElementById('relationship').value;
 
-    try {
-      const response = await fetch("/residency/submit/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRFToken": csrfToken,
-        },
-        body: JSON.stringify(payload),
-      });
+                if (!name || !id || !relationship) {
+                    showMessage('requestError', 'Vui lòng điền đầy đủ thông tin người cần thêm!');
+                    return;
+                }
+            } else if (requestType === 'remove_resident') {
+                const person = document.getElementById('removeResidentName').value;
+                const reason = document.getElementById('removeReason').value;
 
-      const data = await response.json();
+                if (!person || !reason) {
+                    showMessage('requestError', 'Vui lòng chọn người và lý do giảm!');
+                    return;
+                }
+            } else if (requestType === 'change_status') {
+                const currentStatus = document.getElementById('currentStatus').value;
+                const newStatus = document.getElementById('newStatus').value;
 
-      if (response.ok) {
-        document.getElementById("requestSuccess").innerText = "✅ Yêu cầu đã được gửi thành công.";
-        document.getElementById("requestSuccess").style.display = "block";
-        document.getElementById("requestError").style.display = "none";
-        resetRequestForm();
-      } else {
-        throw new Error(data.error || "Gửi yêu cầu thất bại.");
-      }
-    } catch (error) {
-      document.getElementById("requestError").innerText = "❌ " + error.message;
-      document.getElementById("requestError").style.display = "block";
-      document.getElementById("requestSuccess").style.display = "none";
-    }
-  }
+                if (!newStatus || currentStatus === newStatus) {
+                    showMessage('requestError', 'Vui lòng chọn trạng thái mới khác với trạng thái hiện tại!');
+                    return;
+                }
+            }
 
-function resetRequestForm() {
-  // Reset loại yêu cầu và ẩn form chính
-  const requestTypeEl = document.getElementById('requestType');
-  if (requestTypeEl) requestTypeEl.value = '';
+            // Giả lập gửi yêu cầu
+            setTimeout(() => {
+                showMessage('requestSuccess', 'Yêu cầu đã được gửi thành công! Chúng tôi sẽ xử lý trong vòng 3-5 ngày làm việc.');
+                
+                // Reset form
+                resetRequestForm();
+            }, 1000);
+        }
 
-  const requestFormEl = document.getElementById('requestForm');
-  if (requestFormEl) requestFormEl.style.display = 'none';
-
-  // Danh sách id các input/textarea có thể có
-  const fieldsToClear = [
-    'requestDetails',
-    'fromDate', 'toDate', 'origin', 'destination', 'reason',
-    'fieldChanged',
-  ];
-
-  // Chỉ reset các trường input/textarea nếu chúng tồn tại và đang hiển thị
-  fieldsToClear.forEach(id => {
-    const el = document.getElementById(id);
-    if (el && el.offsetParent !== null) { // offsetParent !== null nghĩa là element đang hiển thị
-      if ('value' in el) {
-        el.value = '';
-      }
-    }
-  });
-}
+        function resetRequestForm() {
+            document.getElementById('requestType').value = '';
+            document.getElementById('requestDetails').value = '';
+            document.getElementById('requestForm').style.display = 'none';
+            
+            // Reset các form con
+            document.getElementById('newResidentName').value = '';
+            document.getElementById('newResidentId').value = '';
+            document.getElementById('relationship').value = '';
+            document.getElementById('removeResidentName').value = '';
+            document.getElementById('removeReason').value = '';
+            document.getElementById('currentStatus').value = 'permanent';
+            document.getElementById('newStatus').value = '';
+            document.getElementById('attachments').value = '';
+        }
 
         function showMessage(elementId, message) {
-  const element = document.getElementById(elementId);
-  if (!element) {
-    console.warn(`Không tìm thấy phần tử với id = ${elementId}`);
-    return;
-  }
-  element.textContent = message;
-  element.style.display = 'block';
-
-  // Ẩn sau 5 giây
-  setTimeout(() => {
-    element.style.display = 'none';
-  }, 5000);
-}
-
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.style.display = 'block';
+            
+            // Ẩn thông báo sau 5 giây
+            setTimeout(() => {
+                element.style.display = 'none';
+            }, 5000);
+        }
 
         function closeModal(modalId) {
             document.getElementById(modalId).style.display = 'none';
@@ -819,13 +859,26 @@ function resetRequestForm() {
                 button.disabled = false;
             }, 2000);
         }
-        
+
         // Khởi tạo dữ liệu mẫu
         document.addEventListener('DOMContentLoaded', function() {
             // Có thể thêm các khởi tạo khác ở đây
             console.log('Cổng thông tin cư dân đã sẵn sàng!');
         });
 
+        // Xử lý file upload
+        document.getElementById('attachments').addEventListener('change', function(e) {
+            const files = e.target.files;
+            const maxSize = 5 * 1024 * 1024; // 5MB
+            
+            for (let file of files) {
+                if (file.size > maxSize) {
+                    alert(`File ${file.name} vượt quá kích thước cho phép (5MB)`);
+                    e.target.value = '';
+                    break;
+                }
+            }
+        });
 
         // Thêm hiệu ứng hover cho các card
         document.querySelectorAll('.card').forEach(card => {
@@ -840,9 +893,6 @@ function resetRequestForm() {
         function confirmLogout() {
     return confirm("Đăng xuất khỏi tài khoản của bạn?");
 }
-
-    
     </script>
-</body>
-</html>
+
         
